@@ -1,0 +1,21 @@
+{
+  "/accreditation/page": "app/accreditation/page.js",
+  "/admin/dashboard/page": "app/admin/dashboard/page.js",
+  "/admin/login/page": "app/admin/login/page.js",
+  "/admin/page": "app/admin/page.js",
+  "/admin/signup/page": "app/admin/signup/page.js",
+  "/api/accreditation/route": "app/api/accreditation/route.js",
+  "/api/admin/login/route": "app/api/admin/login/route.js",
+  "/api/admin/me/route": "app/api/admin/me/route.js",
+  "/api/admin/signup/route": "app/api/admin/signup/route.js",
+  "/api/admin/voters/route": "app/api/admin/voters/route.js",
+  "/api/candidates/route": "app/api/candidates/route.js",
+  "/api/elections/route": "app/api/elections/route.js",
+  "/api/results/route": "app/api/results/route.js",
+  "/api/seed/route": "app/api/seed/route.js",
+  "/api/upload/route": "app/api/upload/route.js",
+  "/api/vote/route": "app/api/vote/route.js",
+  "/live/page": "app/live/page.js",
+  "/page": "app/page.js",
+  "/vote/page": "app/vote/page.js"
+}

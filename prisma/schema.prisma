@@ -1,0 +1,166 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL")
+}
+
+// ─── Admin ───────────────────────────────────────────────────────────────────
+
+model Admin {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // hashed
+  name      String
+  createdAt DateTime @default(now())
+}
+
+// ─── Election ────────────────────────────────────────────────────────────────
+
+model Election {
+  id          String         @id @default(cuid())
+  title       String
+  description String
+  status      ElectionStatus @default(DRAFT)
+  startDate   DateTime
+  endDate     DateTime
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  positions            Position[]
+  accreditationFields  AccreditationField[]
+  accreditedVoters     AccreditedVoter[]
+  voteActivity         VoteActivity[]
+}
+
+enum ElectionStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+}
+
+// ─── Position ────────────────────────────────────────────────────────────────
+
+model Position {
+  id          String      @id @default(cuid())
+  electionId  String
+  title       String
+  description String
+  votingType  VotingType  @default(SINGLE)
+  maxVotes    Int         @default(1)
+  order       Int         @default(0)
+  createdAt   DateTime    @default(now())
+
+  election   Election    @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  candidates Candidate[]
+  votes      Vote[]
+}
+
+enum VotingType {
+  SINGLE
+  MULTIPLE
+}
+
+// ─── Candidate ───────────────────────────────────────────────────────────────
+
+model Candidate {
+  id         String   @id @default(cuid())
+  positionId String
+  name       String
+  party      String
+  bio        String
+  image      String
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  position     Position      @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  votes        Vote[]
+  voteActivity VoteActivity[]
+}
+
+// ─── Accreditation Field ─────────────────────────────────────────────────────
+
+model AccreditationField {
+  id          String    @id @default(cuid())
+  electionId  String
+  label       String
+  type        FieldType @default(TEXT)
+  required    Boolean   @default(true)
+  placeholder String    @default("")
+  options     String[]  // for select fields
+  order       Int       @default(0)
+
+  election Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+}
+
+enum FieldType {
+  TEXT
+  EMAIL
+  NUMBER
+  SELECT
+  DATE
+}
+
+// ─── Accredited Voter ────────────────────────────────────────────────────────
+
+model AccreditedVoter {
+  id            String   @id @default(cuid())
+  electionId    String
+  code          String   @unique
+  name          String
+  email         String
+  nationalId    String
+  dateOfBirth   String
+  stateOfOrigin String
+  extraData     Json     @default("{}")
+  hasVoted      Boolean  @default(false)
+  accreditedAt  DateTime @default(now())
+
+  election     Election       @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  votes        Vote[]
+  voteActivity VoteActivity[]
+
+  @@unique([electionId, email])
+  @@unique([electionId, nationalId])
+  @@index([code])
+  @@index([electionId])
+}
+
+// ─── Vote ────────────────────────────────────────────────────────────────────
+
+model Vote {
+  id          String   @id @default(cuid())
+  voterId     String
+  positionId  String
+  candidateId String
+  castAt      DateTime @default(now())
+
+  voter     AccreditedVoter @relation(fields: [voterId], references: [id], onDelete: Cascade)
+  position  Position        @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  candidate Candidate       @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@unique([voterId, positionId])
+  @@index([positionId])
+  @@index([candidateId])
+}
+
+// ─── Vote Activity ───────────────────────────────────────────────────────────
+
+model VoteActivity {
+  id            String   @id @default(cuid())
+  electionId    String
+  voterId       String
+  candidateId   String
+  positionTitle String
+  voterName     String
+  timestamp     DateTime @default(now())
+
+  election  Election        @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  voter     AccreditedVoter @relation(fields: [voterId], references: [id], onDelete: Cascade)
+  candidate Candidate       @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([electionId])
+}

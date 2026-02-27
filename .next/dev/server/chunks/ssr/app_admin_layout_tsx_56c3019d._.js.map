@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///Users/mac/Documents/DevWork/soltec/projects/ballot/app/admin/layout.tsx"],"sourcesContent":["export default function AdminLayout({ children }: { children: React.ReactNode }) {\n  return <>{children}</>\n}\n"],"names":[],"mappings":";;;;;;AAAe,SAAS,YAAY,EAAE,QAAQ,EAAiC;IAC7E,qBAAO;kBAAG;;AACZ"}}]
+}
