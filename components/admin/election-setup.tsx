@@ -95,7 +95,7 @@ export function AdminElectionSetup() {
           </div>
           <div className="space-y-2">
             <Label className="text-sm font-medium">Status</Label>
-            <Select value={status} onValueChange={setStatus}>
+            <Select value={status} onValueChange={(v) => setStatus(v as "draft" | "active" | "closed")}>
               <SelectTrigger className="bg-background">
                 <SelectValue />
               </SelectTrigger>

@@ -1,0 +1,194 @@
+{
+  "version": 3,
+  "pages404": true,
+  "appType": "app",
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "priority": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [],
+    "fallback": []
+  },
+  "dynamicRoutes": [],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/_global-error",
+      "regex": "^/_global\\-error(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_global\\-error(?:/)?$"
+    },
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/accreditation",
+      "regex": "^/accreditation(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/accreditation(?:/)?$"
+    },
+    {
+      "page": "/admin",
+      "regex": "^/admin(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin(?:/)?$"
+    },
+    {
+      "page": "/admin/dashboard",
+      "regex": "^/admin/dashboard(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/dashboard(?:/)?$"
+    },
+    {
+      "page": "/admin/login",
+      "regex": "^/admin/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/login(?:/)?$"
+    },
+    {
+      "page": "/admin/signup",
+      "regex": "^/admin/signup(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/signup(?:/)?$"
+    },
+    {
+      "page": "/api/accreditation",
+      "regex": "^/api/accreditation(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/accreditation(?:/)?$"
+    },
+    {
+      "page": "/api/admin/login",
+      "regex": "^/api/admin/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/login(?:/)?$"
+    },
+    {
+      "page": "/api/admin/me",
+      "regex": "^/api/admin/me(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/me(?:/)?$"
+    },
+    {
+      "page": "/api/admin/settings",
+      "regex": "^/api/admin/settings(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/settings(?:/)?$"
+    },
+    {
+      "page": "/api/admin/signup",
+      "regex": "^/api/admin/signup(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/signup(?:/)?$"
+    },
+    {
+      "page": "/api/admin/voters",
+      "regex": "^/api/admin/voters(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/voters(?:/)?$"
+    },
+    {
+      "page": "/api/candidates",
+      "regex": "^/api/candidates(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/candidates(?:/)?$"
+    },
+    {
+      "page": "/api/elections",
+      "regex": "^/api/elections(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/elections(?:/)?$"
+    },
+    {
+      "page": "/api/positions",
+      "regex": "^/api/positions(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/positions(?:/)?$"
+    },
+    {
+      "page": "/api/register",
+      "regex": "^/api/register(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/register(?:/)?$"
+    },
+    {
+      "page": "/api/results",
+      "regex": "^/api/results(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/results(?:/)?$"
+    },
+    {
+      "page": "/api/seed",
+      "regex": "^/api/seed(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/seed(?:/)?$"
+    },
+    {
+      "page": "/api/upload",
+      "regex": "^/api/upload(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/upload(?:/)?$"
+    },
+    {
+      "page": "/api/vote",
+      "regex": "^/api/vote(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/vote(?:/)?$"
+    },
+    {
+      "page": "/live",
+      "regex": "^/live(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/live(?:/)?$"
+    },
+    {
+      "page": "/register",
+      "regex": "^/register(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/register(?:/)?$"
+    },
+    {
+      "page": "/vote",
+      "regex": "^/vote(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/vote(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments",
+    "clientParamParsing": false,
+    "dynamicRSCPrerender": false
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}

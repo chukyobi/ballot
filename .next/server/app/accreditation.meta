@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/accreditation/layout,_N_T_/accreditation/page,_N_T_/accreditation"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/accreditation/__PAGE__",
+    "/accreditation",
+    "/_index",
+    "/_head"
+  ]
+}

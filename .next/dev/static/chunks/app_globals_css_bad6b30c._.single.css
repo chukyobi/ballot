@@ -95,6 +95,9 @@
 
 @layer theme {
   :root, :host {
+    --font-sans: var(--font-sans, "Plus Jakarta Sans", system-ui, sans-serif);
+    --font-serif: var(--font-serif, "DM Serif Display", Georgia, serif);
+    --font-mono: var(--font-mono, "JetBrains Mono", "Fira Code", monospace);
     --color-red-50: #fef2f2;
     --color-red-300: #ffa3a3;
     --color-red-400: #ff6568;
@@ -175,8 +178,8 @@
     --aspect-video: 16 / 9;
     --default-transition-duration: .15s;
     --default-transition-timing-function: cubic-bezier(.4, 0, .2, 1);
-    --default-font-family: "Plus Jakarta Sans", system-ui, sans-serif;
-    --default-mono-font-family: "JetBrains Mono", "Fira Code", monospace;
+    --default-font-family: var(--font-sans, "Plus Jakarta Sans", system-ui, sans-serif);
+    --default-mono-font-family: var(--font-mono, "JetBrains Mono", "Fira Code", monospace);
     --color-border: var(--border);
   }
 
@@ -3261,15 +3264,15 @@
   }
 
   .font-mono {
-    font-family: JetBrains Mono, Fira Code, monospace;
+    font-family: var(--font-mono, "JetBrains Mono", "Fira Code", monospace);
   }
 
   .font-sans {
-    font-family: Plus Jakarta Sans, system-ui, sans-serif;
+    font-family: var(--font-sans, "Plus Jakarta Sans", system-ui, sans-serif);
   }
 
   .font-serif {
-    font-family: DM Serif Display, Georgia, serif;
+    font-family: var(--font-serif, "DM Serif Display", Georgia, serif);
   }
 
   .text-2xl {

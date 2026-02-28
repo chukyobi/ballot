@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Playfair_Display, Geist_Mono } from 'next/font/google'
+import { Plus_Jakarta_Sans, DM_Serif_Display, JetBrains_Mono } from 'next/font/google'
 import { Toaster } from 'sonner'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
-const _inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
-const _playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair' })
-const _geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
+const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-sans' })
+const dmSerifDisplay = DM_Serif_Display({ subsets: ['latin'], weight: '400', variable: '--font-serif' })
+const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
 
 export const metadata: Metadata = {
   title: 'BallotBox - Secure Online Voting System',
@@ -42,7 +42,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${plusJakartaSans.variable} ${dmSerifDisplay.variable} ${jetbrainsMono.variable}`}>
       <body className="font-sans antialiased">
         {children}
         <Toaster richColors position="top-right" />
