@@ -1,10 +1,17 @@
 /**
  * POST /api/accreditation
- * Registers a new voter for the active election.
+ * Accredits a registered voter by verifying their NIPR + PIN.
  * Returns the generated voting code on success.
+ *
+ * Flow:
+ *  1. Voter must already exist in RegisteredVoter (via /register).
+ *  2. NIPR must match a record → if not, error.
+ *  3. PIN must be correct → if not, error.
+ *  4. If valid, creates an AccreditedVoter record with a unique voting code.
  */
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
+import { compare } from "bcryptjs"
 
 /** Generates a human-readable, unambiguous voting code */
 function generateVotingCode(): string {
@@ -19,22 +26,45 @@ function generateVotingCode(): string {
 export async function POST(req: Request) {
     try {
         const body = await req.json()
-        const { name, email, nationalId, dateOfBirth, stateOfOrigin, electionId } = body
+        const { name, email, nipr, pin, electionId } = body
 
-        // ── Validate required fields ─────────────────────────────────────────────
-        if (!name || !email || !nationalId || !dateOfBirth || !stateOfOrigin) {
+        // ── Validate required fields ─────────────────────────────────────────
+        if (!name?.trim() || !email?.trim() || !nipr?.trim() || !pin) {
             return NextResponse.json(
-                { error: "All fields are required." },
+                { error: "All fields (name, email, NIPR, and PIN) are required." },
                 { status: 400 }
             )
         }
 
-        // ── Resolve election ──────────────────────────────────────────────────────
+        const trimmedNipr = nipr.trim().toUpperCase()
+        const trimmedEmail = email.trim().toLowerCase()
+
+        // ── Look up registered voter by NIPR ──────────────────────────────────
+        const registeredVoter = await db.registeredVoter.findUnique({
+            where: { nipr: trimmedNipr },
+        })
+
+        if (!registeredVoter) {
+            return NextResponse.json(
+                { error: "No voter found with this NIPR number. Please register first." },
+                { status: 404 }
+            )
+        }
+
+        // ── Verify PIN ────────────────────────────────────────────────────────
+        const pinValid = await compare(pin, registeredVoter.pin)
+        if (!pinValid) {
+            return NextResponse.json(
+                { error: "Incorrect PIN. Please try again." },
+                { status: 401 }
+            )
+        }
+
+        // ── Resolve election ──────────────────────────────────────────────────
         let election
         if (electionId) {
             election = await db.election.findUnique({ where: { id: electionId } })
         } else {
-            // Fall back to the first ACTIVE election
             election = await db.election.findFirst({
                 where: { status: "ACTIVE" },
                 orderBy: { startDate: "asc" },
@@ -48,49 +78,40 @@ export async function POST(req: Request) {
             )
         }
 
-        // ── Duplicate checks ──────────────────────────────────────────────────────
-        const [existingEmail, existingId] = await Promise.all([
+        // ── Duplicate checks ──────────────────────────────────────────────────
+        const [existingEmail, existingNipr] = await Promise.all([
             db.accreditedVoter.findUnique({
-                where: { electionId_email: { electionId: election.id, email } },
+                where: { electionId_email: { electionId: election.id, email: trimmedEmail } },
             }),
             db.accreditedVoter.findUnique({
-                where: { electionId_nationalId: { electionId: election.id, nationalId } },
+                where: { electionId_nipr: { electionId: election.id, nipr: trimmedNipr } },
             }),
         ])
 
-        if (existingEmail) {
+        if (existingEmail || existingNipr) {
             return NextResponse.json(
-                { error: "This email has already been accredited for this election." },
+                { error: "You have already been accredited for this election." },
                 { status: 409 }
             )
         }
 
-        if (existingId) {
-            return NextResponse.json(
-                { error: "This National ID has already been accredited for this election." },
-                { status: 409 }
-            )
-        }
-
-        // ── Generate a unique code ────────────────────────────────────────────────
+        // ── Generate a unique code ────────────────────────────────────────────
         let code = generateVotingCode()
-        // Ensure uniqueness (extremely unlikely clash, but let's be safe)
         let attempts = 0
         while (await db.accreditedVoter.findUnique({ where: { code } })) {
             code = generateVotingCode()
             if (++attempts > 10) throw new Error("Code generation failed.")
         }
 
-        // ── Persist ───────────────────────────────────────────────────────────────
+        // ── Persist ───────────────────────────────────────────────────────────
         const voter = await db.accreditedVoter.create({
             data: {
                 electionId: election.id,
+                registeredVoterId: registeredVoter.id,
                 code,
                 name: name.trim(),
-                email: email.trim().toLowerCase(),
-                nationalId: nationalId.trim(),
-                dateOfBirth,
-                stateOfOrigin,
+                email: trimmedEmail,
+                nipr: trimmedNipr,
             },
         })
 
@@ -99,7 +120,7 @@ export async function POST(req: Request) {
                 success: true,
                 code: voter.code,
                 voterId: voter.id,
-                message: "Accreditation successful. Keep your code safe.",
+                message: "Accreditation successful! Keep your voting code safe.",
             },
             { status: 201 }
         )
@@ -144,7 +165,7 @@ export async function GET(req: Request) {
             code: voter.code,
             name: voter.name,
             email: voter.email,
-            stateOfOrigin: voter.stateOfOrigin,
+            nipr: voter.nipr,
             hasVoted: voter.hasVoted,
             accreditedAt: voter.accreditedAt,
         })

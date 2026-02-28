@@ -163,7 +163,7 @@ async function POST(req) {
                     voterId: voter.id,
                     candidateId,
                     positionTitle: position.title,
-                    voterName: voter.name.split(" ")[0] + " " + (voter.name.split(" ")[1]?.[0] || "") + "."
+                    voterName: `Voter #${String(Math.floor(Math.random() * 9000) + 1000)}`
                 }
             })
         ]);

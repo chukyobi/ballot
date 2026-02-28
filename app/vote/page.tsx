@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import {
   Vote, ArrowLeft, Fingerprint, CheckCircle2, Loader2,
-  AlertCircle, Lock, Radio, Users,
+  AlertCircle, Lock, Radio, Clock, Ban,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,6 +29,7 @@ interface ElectionInfo {
 }
 
 export default function VotePage() {
+  const [votingOpen, setVotingOpen] = useState<boolean | null>(null)
   const [step, setStep] = useState<"code" | "voting" | "done">("code")
   const [codeInput, setCodeInput] = useState("")
   const [loading, setLoading] = useState(false)
@@ -38,6 +39,18 @@ export default function VotePage() {
   const [votedPositions, setVotedPositions] = useState<Record<string, string>>({})
   const [currentPosIdx, setCurrentPosIdx] = useState(0)
   const [voting, setVoting] = useState(false)
+  const [pageLoaded, setPageLoaded] = useState(false)
+
+  // Check if voting is open
+  useEffect(() => {
+    fetch("/api/admin/settings")
+      .then((res) => res.json())
+      .then((data) => setVotingOpen(data.votingOpen ?? false))
+      .catch(() => setVotingOpen(false))
+
+    const timer = setTimeout(() => setPageLoaded(true), 100)
+    return () => clearTimeout(timer)
+  }, [])
 
   // ── Verify code ──────────────────────────────────────────────────────────────
   const handleVerify = async () => {
@@ -59,19 +72,15 @@ export default function VotePage() {
       setElection(data.election)
       setVotedPositions(data.votedPositions || {})
 
-      // Find first unvoted position
       const firstUnvoted = data.election.positions.findIndex(
         (p: Position) => !data.votedPositions[p.id]
       )
       setCurrentPosIdx(firstUnvoted >= 0 ? firstUnvoted : 0)
 
-      // If already voted all positions
       const allVoted = data.election.positions.every((p: Position) => data.votedPositions[p.id])
-      if (allVoted) {
-        setStep("done")
-      } else {
-        setStep("voting")
-      }
+      if (allVoted) setStep("done")
+      else setStep("voting")
+
       toast.success(`Welcome, ${data.voter.name}!`)
     } catch {
       setError("Network error. Please try again.")
@@ -101,25 +110,18 @@ export default function VotePage() {
       }
 
       toast.success(data.message || "Vote cast!")
-
-      // Update local state
       const updated = { ...votedPositions, [position.id]: candidateId }
       setVotedPositions(updated)
 
-      // Move to next unvoted position or finish
       const nextUnvoted = election.positions.findIndex(
         (p, i) => i > currentPosIdx && !updated[p.id]
       )
       if (nextUnvoted >= 0) {
         setCurrentPosIdx(nextUnvoted)
       } else {
-        // Check for any remaining unvoted
         const anyRemaining = election.positions.findIndex((p) => !updated[p.id])
-        if (anyRemaining >= 0) {
-          setCurrentPosIdx(anyRemaining)
-        } else {
-          setStep("done")
-        }
+        if (anyRemaining >= 0) setCurrentPosIdx(anyRemaining)
+        else setStep("done")
       }
     } catch {
       toast.error("Network error.")
@@ -132,16 +134,101 @@ export default function VotePage() {
   const votedCount = Object.keys(votedPositions).length
   const totalPositions = election?.positions.length || 0
 
+  // ── Loading ────────────────────────────────────────────────────────────────
+  if (votingOpen === null) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background hero-gradient">
+        <div className="text-center animate-pulse">
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+          <p className="mt-3 text-sm text-muted-foreground">Loading…</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Voting Not Started ──────────────────────────────────────────────────────
+  if (!votingOpen) {
+    return (
+      <div className={`fixed inset-0 flex flex-col bg-background hero-gradient overflow-hidden transition-opacity duration-1000 ${pageLoaded ? "opacity-100" : "opacity-0"}`}>
+        <div className="pointer-events-none absolute inset-0 z-0">
+          <div className="absolute -top-40 -right-40 h-[600px] w-[600px] rounded-full bg-primary/8 blur-[120px] animate-float" />
+          <div className="absolute -bottom-20 -left-20 h-[500px] w-[500px] rounded-full bg-accent/10 blur-[100px] animate-float-delayed" />
+        </div>
+        <div
+          className="pointer-events-none absolute inset-0 z-0 opacity-[0.03]"
+          style={{
+            backgroundImage: "linear-gradient(oklch(1 0 0 / 1) 1px, transparent 1px), linear-gradient(90deg, oklch(1 0 0 / 1) 1px, transparent 1px)",
+            backgroundSize: "56px 56px",
+          }}
+        />
+
+        <header className="relative z-10 px-6 py-4">
+          <div className="mx-auto flex max-w-7xl items-center justify-between">
+            <Link href="/" className="flex items-center gap-2.5">
+              <Image src="/nipr-logo.jpeg" alt="NIPR Logo" width={140} height={140} className="h-12 w-12 object-contain" />
+            </Link>
+            <Link href="/">
+              <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground">
+                <ArrowLeft className="h-4 w-4" /> Home
+              </Button>
+            </Link>
+          </div>
+        </header>
+
+        <div className="relative z-10 flex-1 flex items-center justify-center px-6">
+          <div className="w-full max-w-lg text-center">
+            <div className="animate-fade-up-in mx-auto mb-8 relative">
+              <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-3xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-sm shadow-2xl">
+                <Ban className="h-14 w-14 text-white/20 animate-pulse" />
+              </div>
+              <div className="absolute inset-0 animate-spin" style={{ animationDuration: "8s" }}>
+                <div className="absolute -top-1 left-1/2 -translate-x-1/2 h-2 w-2 rounded-full bg-primary/40" />
+              </div>
+              <div className="absolute inset-0 animate-spin" style={{ animationDuration: "12s", animationDirection: "reverse" }}>
+                <div className="absolute -right-1 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-accent/40" />
+              </div>
+            </div>
+
+            <h1 className="animate-fade-up-in-delay-1 font-serif text-4xl font-bold text-white md:text-5xl">
+              Voting Not Available
+            </h1>
+            <p className="animate-fade-up-in-delay-2 mt-4 text-lg leading-relaxed text-white/40 max-w-md mx-auto">
+              The voting portal is not open yet. Please wait for the administrator to set up the election and begin voting.
+            </p>
+
+            <div className="animate-fade-up-in-delay-3 mt-8 mx-auto max-w-sm rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm p-5">
+              <div className="flex items-center justify-center gap-3 text-white/30">
+                <Clock className="h-5 w-5" />
+                <span className="text-sm font-medium">Nothing to see here yet</span>
+              </div>
+            </div>
+
+            <div className="animate-fade-up-in-delay-4 mt-8">
+              <Link href="/">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="gap-2 rounded-xl border-white/12 bg-white/5 px-6 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white/10"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Return Home
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Voting is Open ──────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-              <Vote className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <span className="font-serif text-xl font-bold tracking-tight text-foreground">BallotBox</span>
+            <Image src="/nipr-logo.jpeg" alt="NIPR Logo" width={140} height={140} className="h-10 w-10 object-contain" />
           </Link>
           <div className="flex items-center gap-3">
             {voter && <span className="text-sm text-muted-foreground hidden sm:inline">Hey, {voter.name}</span>}
@@ -198,7 +285,6 @@ export default function VotePage() {
         {/* ── Step 2: Voting ── */}
         {step === "voting" && currentPosition && (
           <div>
-            {/* Progress */}
             <div className="mb-8 flex items-center justify-between">
               <div>
                 <h1 className="font-serif text-2xl font-bold text-foreground md:text-3xl">{currentPosition.title}</h1>
@@ -220,8 +306,8 @@ export default function VotePage() {
                     onClick={() => !isVoted && setCurrentPosIdx(idx)}
                     disabled={isVoted}
                     className={`flex items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2 text-xs font-medium transition-all ${isCurrent ? "bg-primary text-primary-foreground" :
-                        isVoted ? "bg-primary/10 text-primary cursor-default" :
-                          "bg-card border border-border text-muted-foreground hover:text-foreground"
+                      isVoted ? "bg-primary/10 text-primary cursor-default" :
+                        "bg-card border border-border text-muted-foreground hover:text-foreground"
                       }`}
                   >
                     {isVoted && <CheckCircle2 className="h-3 w-3" />}
@@ -231,7 +317,7 @@ export default function VotePage() {
               })}
             </div>
 
-            {/* Already voted for this position */}
+            {/* Already voted */}
             {votedPositions[currentPosition.id] ? (
               <div className="rounded-xl border border-primary/20 bg-primary/5 p-8 text-center">
                 <CheckCircle2 className="mx-auto h-10 w-10 text-primary mb-3" />
@@ -239,7 +325,6 @@ export default function VotePage() {
                 <p className="mt-1 text-sm text-muted-foreground">Your vote has been recorded.</p>
               </div>
             ) : (
-              /* Candidate cards */
               <div className="grid gap-4 sm:grid-cols-2">
                 {currentPosition.candidates.map((candidate) => (
                   <div

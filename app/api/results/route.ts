@@ -26,7 +26,7 @@ export async function GET() {
             return NextResponse.json({ error: "No active election." }, { status: 404 })
         }
 
-        // ✅ Infer types directly from the query so Prisma doesn't need to resolve generics
+        // Infer types directly from the query so Prisma doesn't need to resolve generics
         type Election = typeof election
         type Position = Election["positions"][number]
         type Candidate = Position["candidates"][number]

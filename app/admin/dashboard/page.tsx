@@ -8,7 +8,7 @@ import {
     Vote, LayoutDashboard, Users, Settings, UserPlus, BarChart3,
     Activity, Clock, ChevronRight, FileText, Shield, LogOut,
     Plus, Trash2, Loader2, AlertCircle, CheckCircle2, Save,
-    Sparkles, TrendingUp, ArrowUpRight,
+    Sparkles, TrendingUp, ArrowUpRight, Eye, Radio, Power, Timer, ClipboardList,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -35,7 +35,16 @@ interface Election {
 }
 interface Voter {
     id: string; name: string; email: string; code: string; hasVoted: boolean
-    accreditedAt: string; stateOfOrigin: string
+    accreditedAt: string; nipr: string
+}
+
+interface AdminSettings {
+    accreditationOpen: boolean
+    liveResultsVisible: boolean
+    votingOpen: boolean
+    registrationOpen: boolean
+    registrationStartTime: string | null
+    registrationEndTime: string | null
 }
 
 type Tab = "dashboard" | "election" | "candidates" | "accreditation" | "results"
@@ -58,6 +67,56 @@ export default function AdminDashboardPage() {
     const [voterCount, setVoterCount] = useState(0)
     const [loading, setLoading] = useState(true)
     const [adminName, setAdminName] = useState("")
+    const [settings, setSettings] = useState<AdminSettings>({
+        accreditationOpen: false,
+        liveResultsVisible: false,
+        votingOpen: false,
+        registrationOpen: false,
+        registrationStartTime: null,
+        registrationEndTime: null,
+    })
+
+    const loadSettings = useCallback(async () => {
+        try {
+            const res = await fetch("/api/admin/settings")
+            if (res.ok) {
+                const data = await res.json()
+                setSettings(data)
+            }
+        } catch { /* silent */ }
+    }, [])
+
+    const toggleSetting = async (key: keyof AdminSettings) => {
+        if (key === 'registrationOpen' || key === 'registrationStartTime' || key === 'registrationEndTime') return
+        const updated = { ...settings, [key]: !settings[key] }
+        setSettings(updated)
+        try {
+            await fetch("/api/admin/settings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(updated),
+            })
+            toast.success(`${key === 'accreditationOpen' ? 'Accreditation' : key === 'liveResultsVisible' ? 'Live Results' : 'Voting'} ${updated[key] ? 'enabled' : 'disabled'}.`)
+        } catch {
+            setSettings(settings) // revert
+            toast.error("Failed to update setting.")
+        }
+    }
+
+    const updateRegistration = async (payload: Partial<AdminSettings>) => {
+        const updated = { ...settings, ...payload }
+        setSettings(updated)
+        try {
+            await fetch("/api/admin/settings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(updated),
+            })
+        } catch {
+            setSettings(settings)
+            toast.error("Failed to update.")
+        }
+    }
 
     const loadElection = useCallback(async () => {
         const res = await fetch("/api/elections")
@@ -77,8 +136,8 @@ export default function AdminDashboardPage() {
     }, [])
 
     const refreshAll = useCallback(async () => {
-        await Promise.all([loadElection(), loadVoters()])
-    }, [loadElection, loadVoters])
+        await Promise.all([loadElection(), loadVoters(), loadSettings()])
+    }, [loadElection, loadVoters, loadSettings])
 
     useEffect(() => {
         (async () => {
@@ -234,6 +293,9 @@ export default function AdminDashboardPage() {
                                 totalVotes={totalVotes}
                                 totalCandidates={totalCandidates}
                                 setTab={setTab}
+                                settings={settings}
+                                onUpdateRegistration={updateRegistration}
+                                onToggleSetting={toggleSetting}
                             />
                         )}
                         {tab === "election" && (
@@ -258,11 +320,80 @@ export default function AdminDashboardPage() {
 // ─── Dashboard Tab ────────────────────────────────────────────────────────────
 
 function DashboardTab({
-    election, voters, voterCount, totalVotes, totalCandidates, setTab,
+    election, voters, voterCount, totalVotes, totalCandidates, setTab, settings, onToggleSetting, onUpdateRegistration,
 }: {
     election: Election | null; voters: Voter[]; voterCount: number
     totalVotes: number; totalCandidates: number; setTab: (t: Tab) => void
+    settings: AdminSettings; onToggleSetting: (key: keyof AdminSettings) => void
+    onUpdateRegistration: (payload: Partial<AdminSettings>) => Promise<void>
 }) {
+    // Registration date-range state
+    const toLocalDatetimeStr = (d: Date) => {
+        const pad = (n: number) => String(n).padStart(2, "0")
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+    }
+
+    const nowDate = new Date()
+    const [regStartDate, setRegStartDate] = useState(toLocalDatetimeStr(nowDate))
+    const [regEndDate, setRegEndDate] = useState(
+        toLocalDatetimeStr(new Date(nowDate.getTime() + 24 * 60 * 60 * 1000))
+    )
+    const [extendAmount, setExtendAmount] = useState("1")
+    const [extendUnit, setExtendUnit] = useState<"hours" | "days">("days")
+
+    // Sync fields when settings change
+    useEffect(() => {
+        if (settings.registrationStartTime) {
+            setRegStartDate(toLocalDatetimeStr(new Date(settings.registrationStartTime)))
+        }
+        if (settings.registrationEndTime) {
+            setRegEndDate(toLocalDatetimeStr(new Date(settings.registrationEndTime)))
+        }
+    }, [settings.registrationStartTime, settings.registrationEndTime])
+
+    const handleActivateRegistration = async () => {
+        const start = new Date(regStartDate)
+        const end = new Date(regEndDate)
+        if (end <= start) {
+            toast.error("End date must be after start date.")
+            return
+        }
+        await onUpdateRegistration({
+            registrationOpen: true,
+            registrationStartTime: start.toISOString(),
+            registrationEndTime: end.toISOString(),
+        })
+        toast.success("Registration window activated!")
+    }
+
+    const handleExtendRegistration = async () => {
+        const amount = parseInt(extendAmount) || 1
+        const ms = extendUnit === "days" ? amount * 24 * 60 * 60 * 1000 : amount * 60 * 60 * 1000
+        const currentEnd = settings.registrationEndTime
+            ? new Date(settings.registrationEndTime)
+            : new Date()
+        const newEnd = new Date(Math.max(currentEnd.getTime(), Date.now()) + ms)
+        await onUpdateRegistration({
+            registrationOpen: true,
+            registrationEndTime: newEnd.toISOString(),
+        })
+        toast.success(`Registration extended by ${amount} ${extendUnit}.`)
+    }
+
+    const handleStopRegistration = async () => {
+        await onUpdateRegistration({ registrationOpen: false })
+        toast.success("Registration closed.")
+    }
+
+    const regStartTime = settings.registrationStartTime ? new Date(settings.registrationStartTime) : null
+    const regEndTime = settings.registrationEndTime ? new Date(settings.registrationEndTime) : null
+    const regIsExpired = regEndTime ? regEndTime.getTime() <= Date.now() : false
+    const regNotStartedYet = regStartTime ? regStartTime.getTime() > Date.now() : false
+    const fmtDate = (d: Date) =>
+        d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) +
+        " at " +
+        d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+
     return (
         <div>
             {/* Header */}
@@ -375,6 +506,212 @@ function DashboardTab({
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    </div>
+
+                    {/* ── Control Panel ── */}
+                    <div className="mb-8">
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Control Panel</p>
+
+                        {/* Registration Control — Date Range */}
+                        <div className={`mb-4 rounded-2xl border p-5 shadow-sm transition-all ${settings.registrationOpen
+                                ? 'bg-amber-500/10 border-amber-500/30'
+                                : 'bg-card border-border'
+                            }`}>
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${settings.registrationOpen ? 'bg-amber-500/20' : 'bg-muted'
+                                        }`}>
+                                        <ClipboardList className={`h-5 w-5 ${settings.registrationOpen ? 'text-amber-500' : 'text-muted-foreground'}`} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-foreground">Registration Portal</h4>
+                                        <p className="text-xs text-muted-foreground">Set a date window for voter registration.</p>
+                                    </div>
+                                </div>
+                                <Badge className={`text-[10px] ${settings.registrationOpen && !regIsExpired
+                                        ? regNotStartedYet
+                                            ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
+                                            : 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                                        : regIsExpired && settings.registrationEndTime
+                                            ? 'bg-destructive/10 text-destructive border-destructive/20'
+                                            : 'bg-muted text-muted-foreground border-border'
+                                    }`}>
+                                    {settings.registrationOpen && !regIsExpired
+                                        ? regNotStartedYet ? '● Scheduled' : '● Active'
+                                        : regIsExpired && settings.registrationEndTime
+                                            ? '● Expired'
+                                            : '○ Inactive'}
+                                </Badge>
+                            </div>
+
+                            {/* Date inputs — only when NOT active */}
+                            {!settings.registrationOpen && (
+                                <div className="grid gap-3 sm:grid-cols-2 mb-4">
+                                    <div>
+                                        <Label className="text-xs text-muted-foreground mb-1 block">Start Date & Time</Label>
+                                        <Input
+                                            type="datetime-local"
+                                            value={regStartDate}
+                                            onChange={(e) => setRegStartDate(e.target.value)}
+                                            className="h-9 text-xs"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label className="text-xs text-muted-foreground mb-1 block">End Date & Time</Label>
+                                        <Input
+                                            type="datetime-local"
+                                            value={regEndDate}
+                                            onChange={(e) => setRegEndDate(e.target.value)}
+                                            className="h-9 text-xs"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Active window summary */}
+                            {settings.registrationOpen && regStartTime && regEndTime && (
+                                <div className="mb-4 rounded-xl bg-white/[0.04] border border-white/[0.06] p-3">
+                                    <div className="grid grid-cols-2 gap-3 text-xs">
+                                        <div>
+                                            <span className="text-muted-foreground block mb-0.5">Opens</span>
+                                            <span className="font-semibold text-foreground">{fmtDate(regStartTime)}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-muted-foreground block mb-0.5">Closes</span>
+                                            <span className="font-semibold text-foreground">{fmtDate(regEndTime)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Action buttons */}
+                            <div className="flex items-end gap-3 flex-wrap">
+                                {!settings.registrationOpen ? (
+                                    <Button
+                                        size="sm"
+                                        onClick={handleActivateRegistration}
+                                        className="gap-2 bg-amber-500 text-white hover:bg-amber-600"
+                                    >
+                                        <Timer className="h-3.5 w-3.5" />
+                                        {regIsExpired && settings.registrationEndTime ? 'Reopen Registration' : 'Activate Registration'}
+                                    </Button>
+                                ) : (
+                                    <>
+                                        {/* Extend controls */}
+                                        <div className="flex items-end gap-2">
+                                            <div className="w-[70px]">
+                                                <Label className="text-xs text-muted-foreground mb-1 block">Amount</Label>
+                                                <Input
+                                                    type="number"
+                                                    min="1"
+                                                    max="365"
+                                                    value={extendAmount}
+                                                    onChange={(e) => setExtendAmount(e.target.value)}
+                                                    className="h-9 text-xs"
+                                                />
+                                            </div>
+                                            <div className="w-[100px]">
+                                                <Label className="text-xs text-muted-foreground mb-1 block">Unit</Label>
+                                                <Select value={extendUnit} onValueChange={(v: "hours" | "days") => setExtendUnit(v)}>
+                                                    <SelectTrigger className="h-9 text-xs">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="hours">Hours</SelectItem>
+                                                        <SelectItem value="days">Days</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={handleExtendRegistration}
+                                                className="gap-2 border-amber-500/30 text-amber-600 hover:bg-amber-500/10"
+                                            >
+                                                <Timer className="h-3.5 w-3.5" />
+                                                Extend
+                                            </Button>
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={handleStopRegistration}
+                                            className="gap-2 border-destructive/30 text-destructive hover:bg-destructive/10"
+                                        >
+                                            Close Now
+                                        </Button>
+                                    </>
+                                )}
+                            </div>
+
+                            {/* Expired info */}
+                            {!settings.registrationOpen && regIsExpired && settings.registrationEndTime && (
+                                <div className="mt-3 flex items-center gap-2 text-xs text-destructive">
+                                    <Clock className="h-3.5 w-3.5" />
+                                    Registration expired on {fmtDate(new Date(settings.registrationEndTime))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Toggle Controls Grid */}
+                        <div className="grid gap-4 sm:grid-cols-3">
+                            {[
+                                {
+                                    key: "accreditationOpen" as keyof AdminSettings,
+                                    icon: FileText,
+                                    title: "Accreditation",
+                                    desc: "Open or close the accreditation portal for voters.",
+                                    activeColor: "bg-emerald-500",
+                                    activeBg: "bg-emerald-500/10 border-emerald-500/30",
+                                    inactiveBg: "bg-card border-border",
+                                },
+                                {
+                                    key: "liveResultsVisible" as keyof AdminSettings,
+                                    icon: Radio,
+                                    title: "Live Results",
+                                    desc: "Show or hide the live results link on the public page.",
+                                    activeColor: "bg-blue-500",
+                                    activeBg: "bg-blue-500/10 border-blue-500/30",
+                                    inactiveBg: "bg-card border-border",
+                                },
+                                {
+                                    key: "votingOpen" as keyof AdminSettings,
+                                    icon: Power,
+                                    title: "Voting Portal",
+                                    desc: "Open or close the voting portal for accredited voters.",
+                                    activeColor: "bg-violet-500",
+                                    activeBg: "bg-violet-500/10 border-violet-500/30",
+                                    inactiveBg: "bg-card border-border",
+                                },
+                            ].map((ctrl) => {
+                                const isActive = settings[ctrl.key] as boolean
+                                return (
+                                    <div
+                                        key={ctrl.key}
+                                        className={`rounded-2xl border p-5 shadow-sm transition-all ${isActive ? ctrl.activeBg : ctrl.inactiveBg}`}
+                                    >
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${isActive ? ctrl.activeColor + '/20' : 'bg-muted'}`}>
+                                                <ctrl.icon className={`h-5 w-5 ${isActive ? ctrl.activeColor.replace('bg-', 'text-') : 'text-muted-foreground'}`} />
+                                            </div>
+                                            <button
+                                                onClick={() => onToggleSetting(ctrl.key)}
+                                                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${isActive ? ctrl.activeColor : 'bg-muted'}`}
+                                            >
+                                                <span
+                                                    className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${isActive ? 'translate-x-6' : 'translate-x-1'}`}
+                                                />
+                                            </button>
+                                        </div>
+                                        <h4 className="text-sm font-bold text-foreground">{ctrl.title}</h4>
+                                        <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{ctrl.desc}</p>
+                                        <Badge className={`mt-2 text-[10px] ${isActive ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted text-muted-foreground border-border'}`}>
+                                            {isActive ? '● Active' : '○ Inactive'}
+                                        </Badge>
+                                    </div>
+                                )
+                            })}
                         </div>
                     </div>
 
@@ -796,7 +1133,7 @@ function AccreditationTab({ voters, voterCount, onRefresh }: { voters: Voter[]; 
                                 <th className="px-5 py-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name</th>
                                 <th className="px-5 py-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Email</th>
                                 <th className="px-5 py-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Code</th>
-                                <th className="px-5 py-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">State</th>
+                                <th className="px-5 py-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">NIPR</th>
                                 <th className="px-5 py-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
                                 <th className="px-5 py-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Date</th>
                             </tr>
@@ -807,7 +1144,7 @@ function AccreditationTab({ voters, voterCount, onRefresh }: { voters: Voter[]; 
                                     <td className="px-5 py-3.5 font-medium text-foreground">{v.name}</td>
                                     <td className="px-5 py-3.5 text-muted-foreground">{v.email}</td>
                                     <td className="px-5 py-3.5"><Badge variant="secondary" className="font-mono text-[10px] bg-muted/60">{v.code}</Badge></td>
-                                    <td className="px-5 py-3.5 text-muted-foreground">{v.stateOfOrigin}</td>
+                                    <td className="px-5 py-3.5 text-muted-foreground font-mono text-xs">{v.nipr}</td>
                                     <td className="px-5 py-3.5">
                                         <Badge className={`text-[10px] ${v.hasVoted ? "bg-primary/10 text-primary border-primary/20" : "bg-muted text-muted-foreground border-border"}`}>
                                             {v.hasVoted ? "✓ Voted" : "Pending"}

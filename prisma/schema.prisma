@@ -104,27 +104,46 @@ enum FieldType {
   DATE
 }
 
+// ─── Registered Voter (pre-registration) ─────────────────────────────────────
+// Voters must register here first. During accreditation they present
+// their NIPR + PIN to receive a one-time voting code.
+
+model RegisteredVoter {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  nipr      String   @unique   // National Identity & Population Register number
+  pin       String              // hashed — needed for accreditation
+  createdAt DateTime @default(now())
+
+  // A registered voter can later become an accredited voter
+  accreditedVoter AccreditedVoter?
+
+  @@index([nipr])
+  @@index([email])
+}
+
 // ─── Accredited Voter ────────────────────────────────────────────────────────
+// Created when a RegisteredVoter successfully accredits with valid NIPR + PIN.
 
 model AccreditedVoter {
-  id            String   @id @default(cuid())
-  electionId    String
-  code          String   @unique
-  name          String
-  email         String
-  nationalId    String
-  dateOfBirth   String
-  stateOfOrigin String
-  extraData     Json     @default("{}")
-  hasVoted      Boolean  @default(false)
-  accreditedAt  DateTime @default(now())
+  id                String   @id @default(cuid())
+  electionId        String
+  registeredVoterId String   @unique  // link to RegisteredVoter
+  code              String   @unique  // one-time voting code
+  name              String
+  email             String
+  nipr              String
+  hasVoted          Boolean  @default(false)
+  accreditedAt      DateTime @default(now())
 
-  election     Election       @relation(fields: [electionId], references: [id], onDelete: Cascade)
-  votes        Vote[]
-  voteActivity VoteActivity[]
+  election        Election        @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  registeredVoter RegisteredVoter @relation(fields: [registeredVoterId], references: [id], onDelete: Cascade)
+  votes           Vote[]
+  voteActivity    VoteActivity[]
 
   @@unique([electionId, email])
-  @@unique([electionId, nationalId])
+  @@unique([electionId, nipr])
   @@index([code])
   @@index([electionId])
 }

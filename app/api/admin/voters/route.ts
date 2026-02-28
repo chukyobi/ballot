@@ -30,7 +30,7 @@ export async function GET() {
                 code: true,
                 hasVoted: true,
                 accreditedAt: true,
-                stateOfOrigin: true,
+                nipr: true,
             },
         })
 
