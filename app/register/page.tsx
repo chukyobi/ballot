@@ -509,7 +509,7 @@ export default function RegisterPage() {
                                             </Label>
                                             <Input
                                                 id="nipr"
-                                                placeholder="Enter your NIPR number (min 6 characters)"
+                                                placeholder="Enter your NIPR number"
                                                 value={formData.nipr}
                                                 onChange={(e) => handleChange("nipr", e.target.value)}
                                                 className="h-11 bg-white/[0.04] border-white/[0.08] text-white font-mono placeholder:text-white/20 focus:border-primary/50"

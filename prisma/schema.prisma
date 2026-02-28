@@ -1,11 +1,25 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DATABASE_URL")
+}
+
+// ─── Settings (singleton row) ────────────────────────────────────────────────
+
+model Settings {
+  id                    String   @id @default("global")
+  accreditationOpen     Boolean  @default(false)
+  liveResultsVisible    Boolean  @default(false)
+  votingOpen            Boolean  @default(false)
+  registrationOpen      Boolean  @default(false)
+  registrationStartTime DateTime?
+  registrationEndTime   DateTime?
+  updatedAt             DateTime @updatedAt
 }
 
 // ─── Admin ───────────────────────────────────────────────────────────────────

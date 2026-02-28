@@ -1,7 +1,0 @@
-module.exports = [
-"[project]/.next-internal/server/app/live/page/actions.js [app-rsc] (server actions loader, ecmascript)", ((__turbopack_context__, module, exports) => {
-
-}),
-];
-
-//# sourceMappingURL=_next-internal_server_app_live_page_actions_3e61c43f.js.map
